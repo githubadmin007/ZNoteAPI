@@ -1,3 +1,5 @@
 /ZNoteAPI/obj
 /ZNoteAPI/bin
 /ZNoteAPI/wwwroot
+/.vs
+/ZNoteAPI/Deploy

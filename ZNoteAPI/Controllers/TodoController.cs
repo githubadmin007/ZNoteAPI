@@ -8,11 +8,10 @@ using ZJH.BaseTools.BasicExtend;
 using ZJH.BaseTools.DB;
 using ZJH.BaseTools.IO;
 using ZJH.BaseTools.Text;
-using ZNoteAPI.Models.Token;
 
 namespace ZNoteAPI.Controllers
 {
-    public class TodoController : Controller
+    public class TodoController : _BaseController
     {
         public IActionResult Index()
         {
@@ -36,7 +35,7 @@ namespace ZNoteAPI.Controllers
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
                     string todobh = Guid.NewGuid().ToString();
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     if (deadline.IsNullOrWhiteSpace()) deadline = "9999-12-31";
                     deadline += " 23:59:59";
                     string sql = $"insert into d_todo(todobh,name,content,type,deadline,parentbh,state,userbh) values('{todobh}','{name}','{content}','{type}','{deadline}','{parentbh}','{state}','{userbh}')";
@@ -74,7 +73,7 @@ namespace ZNoteAPI.Controllers
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
                     string id = Guid.NewGuid().ToString();
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     if (deadline.IsNullOrWhiteSpace()) deadline = "9999-12-31";
                     deadline += " 23:59:59";
                     string sql = $"update d_todo set name='{name}',content='{content}',type='{type}',deadline='{deadline}' where todobh='{todobh}' and userbh='{userbh}'";
@@ -108,7 +107,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"SELECT * FROM v_todo where userbh='{userbh}' and todobh='{todobh}'";
                     var dict = helper.ExecuteReader_ToDict(sql);
                     if (dict != null)
@@ -142,7 +141,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"SELECT * FROM v_todo where userbh='{userbh}'";
                     sql += $" and parentbh='{parentbh.ToString("")}'";
                     if (!type.IsNullOrWhiteSpace()) sql += $" and type='{type}'";
@@ -171,7 +170,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"SELECT count(*) FROM d_todo where userbh='{userbh}' and parentbh='{todobh}' and state='进行中'";
                     if (helper.ExecuteScalar(sql).ToInt32() == 0)
                     {
@@ -212,7 +211,7 @@ namespace ZNoteAPI.Controllers
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
                     // 获取所有子项
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     var lst = _GetAllSubTodoBH(todobh);
                     lst.Insert(0, todobh);
                     string todobhs = lst.Select(bh => $"'{bh}'").Join(",");
@@ -250,7 +249,7 @@ namespace ZNoteAPI.Controllers
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
                     // 获取所有子项
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     var lst = _GetAllSubTodoBH(todobh);
                     lst.Insert(0, todobh);
                     string todobhs = lst.Select(bh => $"'{bh}'").Join(",");
@@ -310,7 +309,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string todobhs = todobh.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(bh => $"'{bh}'").Join(",");
                     string sql = $"SELECT todobh FROM d_todo where userbh='{userbh}' and parentbh in ({ todobhs })";
                     // 查找传入的todobh的子待办事项编号
@@ -339,7 +338,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"SELECT parentbh FROM d_todo where userbh='{userbh}' and todobh='{todobh}'";
                     return helper.ExecuteScalar(sql).ToString("");
                 }

@@ -12,7 +12,7 @@ using ZNoteAPI.Models.Token;
 
 namespace ZNoteAPI.Controllers
 {
-    public class IncomeController : Controller
+    public class IncomeController : _BaseController
     {
         public IActionResult Index()
         {
@@ -29,7 +29,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"select * from d_income where userbh='{userbh}' order by arrivaldate desc";
                     DataTable table = helper.GetDataTable(sql);
                     result = ResultCode.Success.GetResult(table);
@@ -62,7 +62,7 @@ namespace ZNoteAPI.Controllers
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
                     string incomebh = Guid.NewGuid().ToString();
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"insert into d_income(incomebh,amount,type,arrivaldate,belong_year,belong_month,source,remark,userbh) values('{incomebh}',{amount},'{type}','{arrivaldate}',{belong_year},{belong_month},'{source}','{remark}','{userbh}')";
                     int r = helper.ExecuteNonQuery(sql);
                     if (r > 0)
@@ -95,7 +95,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     List<string> wheres = new List<string>();
                     wheres.Add($"userbh='{userbh}'");
                     if (year > 0) wheres.Add($"belong_year={year}");
@@ -123,7 +123,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     List<string> wheres = new List<string>();
                     wheres.Add($"userbh='{userbh}'");
                     wheres.Add("belong_month<>0");
@@ -152,7 +152,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     string sql = $"SELECT belong_year,sum(amount) as amount FROM d_income where userbh='{userbh}' group by belong_year order by belong_year";
                     DataTable table = helper.GetDataTable(sql);
                     result = ResultCode.Success.GetResult(table);
@@ -176,7 +176,7 @@ namespace ZNoteAPI.Controllers
             {
                 using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
                 {
-                    string userbh = TokenHelper.GetUserBH(Request.Headers["Authorization"]);
+                    string userbh = TokenHelper.GetUserBH();
                     List<string> wheres = new List<string>();
                     wheres.Add($"userbh='{userbh}'");
                     if (year > 0) wheres.Add($"belong_year={year}");

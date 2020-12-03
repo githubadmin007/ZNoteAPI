@@ -13,7 +13,7 @@ using ZNoteAPI.Models.Token;
 
 namespace ZNoteAPI.Controllers
 {
-    public class UserController : Controller
+    public class UserController : _BaseController
     {
         /*
          * 1**
@@ -41,27 +41,42 @@ namespace ZNoteAPI.Controllers
         public JsonResult Login(string loginname,string password) {
             using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
             {
-                using (IDataReader reader = helper.ExecuteReader($"SELECT * FROM u_user where login_name='{loginname}'"))
+                var userInfo = helper.ExecuteReader_ToDict($"SELECT * FROM u_user where login_name='{loginname}'");
+                if (userInfo == null)
                 {
-                    var userInfo = DBConvert.IDataReader_to_Dict(reader);
-                    if (userInfo == null)
+                    return Json(ResultCode.UserNotExist.GetResult());
+                }
+                else
+                {
+                    string _pw = userInfo["password"].ToString();
+                    if (_pw == password)
                     {
-                        return Json(ResultCode.UserNotExist.GetResult()); 
+                        string token = TokenHelper.CreateToken(userInfo["userbh"].ToString(""));
+                        userInfo.Add("token", token);
+                        return Json(ResultCode.Success.GetResult("登陆成功", userInfo));
                     }
-                    else {
-                        string _pw = userInfo["password"].ToString();
-                        if (_pw == password)
-                        {
-                            string token = TokenHelper.CreateToken(userInfo["userbh"].ToString(""));
-                            userInfo.Add("token", token);
-                            return Json(ResultCode.Success.GetResult("登陆成功", userInfo));
-                        }
-                        else {
-                            return Json(ResultCode.UserPwError.GetResult());
-                        }
+                    else
+                    {
+                        return Json(ResultCode.UserPwError.GetResult());
                     }
                 }
             }
         }
+
+        /// <summary>
+        /// 获取用户信息
+        /// </summary>
+        /// <returns></returns>
+        public JsonResult GetUserInfo() {
+            var userInfo = TokenHelper.GetUserInfo();
+            if (userInfo == null)
+            {
+                return Json(ResultCode.Defeat.GetResult("获取失败"));
+            }
+            else {
+                return Json(ResultCode.Success.GetResult("获取成功", userInfo));
+            }
+        }
+
     }
 }
