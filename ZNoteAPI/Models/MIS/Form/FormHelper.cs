@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -9,16 +10,45 @@ using ZJH.BaseTools.DB;
 using ZJH.BaseTools.DB.Extend;
 using ZJH.BaseTools.IO;
 using ZJH.BaseTools.Text;
+using ZNoteAPI.Controllers;
 using ZNoteAPI.Models.MIS.Form;
 
 namespace ZNoteAPI.Models.MIS
 {
-    public class FormHelper : IDisposable
+    public class FormHelper : MISBase
     {
-        DatabaseHelper dbHelper = DatabaseHelper.CreateByConnName("MISDB");
-        public string FormCode { get; }
-        public string KeyNames { get; }
-        public string KeyValues { get; }
+        /// <summary>
+        /// 【待优化！！！】控制器，为了获取与会话有关的一些信息。如userbh等等。
+        /// </summary>
+        public FormController Controller { get; set; }
+
+
+        /// <summary>
+        /// 表单编号
+        /// </summary>
+        public string FormCode { get; set; }
+        /// <summary>
+        /// 初始化组编号
+        /// </summary>
+        public string InitCode { get; set; }
+        /// <summary>
+        /// 权限控制组编号
+        /// </summary>
+        public string CtrlCode { get; set; }
+        /// <summary>
+        /// 是否只读
+        /// </summary>
+        public bool ReadOnly { get; set; }
+        /// <summary>
+        /// 查找记录的键名
+        /// </summary>
+        public string KeyNames { get; set; }
+        /// <summary>
+        /// 查找记录的键值
+        /// </summary>
+        public string KeyValues { get; set; }
+
+
         /// <summary>
         /// 表单基本信息
         /// </summary>
@@ -36,24 +66,11 @@ namespace ZNoteAPI.Models.MIS
         /// </summary>
         bool _IsNew = false;
 
-        /// <summary>
-        /// 构造函数
-        /// </summary>
-        /// <param name="formcode"></param>
-        /// <param name="keyname"></param>
-        /// <param name="keyvalue"></param>
-        public FormHelper(string formcode, string keyname = "", string keyvalue = "")
-        {
-            FormCode = formcode;
-            KeyNames = keyname;
-            KeyValues = keyvalue;
-        }
 
-        public void Dispose()
-        {
-            if (dbHelper != null) {
-                dbHelper.Dispose();
-            }
+        public new void Dispose() {
+            base.Dispose();
+            FormInfo.Dispose();
+            Fields.ForEach(field => field.Dispose());
         }
 
 
@@ -66,9 +83,7 @@ namespace ZNoteAPI.Models.MIS
             {
                 if (_FormInfo == null)
                 {
-                    string sql = "select * from sys_form where formcode=@formcode";
-                    var dict = dbHelper.ExecuteReader_ToDict(sql, new DbParam("formcode", FormCode));
-                    _FormInfo = dict.ToObject<SYS_FORM>();
+                    _FormInfo = new SYS_FORM(FormCode);
                 }
                 return _FormInfo;
             }
@@ -109,6 +124,10 @@ namespace ZNoteAPI.Models.MIS
                     else {
                         _FormData = table.Rows[0];
                     }
+                    // 初始化。表单只读时不初始化，确保展现的与数据库中的一致。
+                    if (!ReadOnly) {
+                        SetDefaultVal();
+                    }
                 }
                 return _FormData;
             }
@@ -122,21 +141,19 @@ namespace ZNoteAPI.Models.MIS
             {
                 if (_Fields == null)
                 {
-                    string sql = $"select FieldBH,Name,CName,Type,`Order` from sys_form_field where formcode=@formcode order by `order`";
-                    var list = dbHelper.ExecuteReader_ToList(sql, new DbParam("formcode", FormCode));
-                    _Fields = list.Select(dict => dict.ToObject<SYS_FORM_FIELD>()).ToList();
-                    // 如果不是新数据，获取值
-                    if (!IsNew)
+                    _Fields = SYS_FORM_FIELD.GetList(FormCode);
+                    // 获取值
+                    foreach (var field in _Fields)
                     {
-                        foreach (var field in _Fields)
-                        {
-                            field.Value = FormData[field.Name];
-                        }
+                        field.Value = FormData[field.Name];
                     }
+                    // 设置字段权限
+                    SetFieldAccess();
                 }
                 return _Fields;
             }
         }
+
 
         /// <summary>
         /// 保存数据
@@ -146,12 +163,15 @@ namespace ZNoteAPI.Models.MIS
         public bool SaveData(string DataJSON) {
             try {
                 if (FormData.SetData(DataJSON)) {
+                    // 初始化
+                    SetDefaultVal();
                     if (IsNew)
                     {
                         return dbHelper.InsertDataRow(FormData, FormInfo.TableName);
                     }
                     else {
-                        return dbHelper.UpdateDataRow(FormData, FormInfo.TableName);
+                        string sql = $"select * from {FormInfo.TableName} where {KeyNames}=@KeyValues";
+                        return dbHelper.UpdateDataRow(FormData, sql, new DbParam("KeyValues", KeyValues));
                     }
                 }
             }
@@ -160,5 +180,46 @@ namespace ZNoteAPI.Models.MIS
             }
             return false;
         }
+
+        /// <summary>
+        /// 初始化默认值，调用此函数前要对_IsNew进行初始化
+        /// </summary>
+        private void SetDefaultVal() {
+            if (_FormData == null) // 不能调用FormData否则会陷入循环调用
+            {
+                return;
+            }
+            var list = SYS_FORM_DEFAULT_VAL.GetList(InitCode);
+            list.ForEach(config => {
+                SYS_FORM_FIELD field = Fields.Find(field => field.FieldBH == config.FieldBH);
+                if (field == null) {
+                    return;
+                }
+                if (config.InitTime == "总是初始化" 
+                    || (config.InitTime == "空值时初始化" && _FormData[field.Name] == DBNull.Value)
+                    || (config.InitTime == "新增时初始化" && _IsNew) // 不能调用IsNew否则会陷入循环调用
+                ) {
+                    _FormData[field.Name] = config.GetInitValue(Controller);
+                }
+            });
+        }
+
+        /// <summary>
+        /// 设置字段权限
+        /// </summary>
+        private void SetFieldAccess() {
+            if (_Fields == null) // 不能调用Fields否则会陷入循环调用
+            {
+                return;
+            }
+            var list = SYS_FORM_CTRL_ACCESS.GetList(CtrlCode);
+            list.ForEach(config => {
+                var field = _Fields.Find(field => field.FieldBH == config.FieldBH);
+                if (field != null) {
+                    field.AccessType = config.AccessType;
+                }
+            });
+        }
+
     }
 }

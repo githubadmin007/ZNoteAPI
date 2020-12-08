@@ -12,18 +12,37 @@ using ZNoteAPI.Models.MIS;
 
 namespace ZNoteAPI.Controllers
 {
-    public class FormController : Controller
+    public class FormController : _BaseController
     {
+        private FormHelper CreateFormHelper() {
+            string formcode = GetRequestParam("formcode");
+            string initcode = GetRequestParam("initcode");
+            string ctrlcode = GetRequestParam("ctrlcode");
+            string @readonly = GetRequestParam("readonly");
+            string keyname = GetRequestParam("keyname");
+            string keyvalue = GetRequestParam("keyvalue");
+            FormHelper form = new FormHelper() {
+                FormCode = formcode,
+                InitCode = initcode,
+                CtrlCode = ctrlcode,
+                ReadOnly = @readonly == "true",
+                KeyNames = keyname,
+                KeyValues = keyvalue,
+                Controller = this
+            };
+            return form;
+        }
+
         /// <summary>
         /// 获取表单信息
         /// </summary>
         /// <param name="formcode">表单编号</param>
         /// <returns></returns>
-        public JsonResult GetFormInfo(string formcode) {
+        public JsonResult GetFormInfo() {
             Result result;
             try
             {
-                using (FormHelper form = new FormHelper(formcode))
+                using (FormHelper form = CreateFormHelper())
                 {
                     result = ResultCode.Success.GetResult("成功", form.FormInfo);
                 }
@@ -40,11 +59,11 @@ namespace ZNoteAPI.Controllers
         /// </summary>
         /// <param name="formcode">表单编号</param>
         /// <returns></returns>
-        public JsonResult GetFields(string formcode, string keyname, string keyvalue) {
+        public JsonResult GetFields() {
             Result result;
             try
             {
-                using (FormHelper form = new FormHelper(formcode, keyname, keyvalue))
+                using (FormHelper form = CreateFormHelper())
                 {
                     result = ResultCode.Success.GetResult("成功", form.Fields);
                 }
@@ -64,11 +83,11 @@ namespace ZNoteAPI.Controllers
         /// <param name="keyname"></param>
         /// <param name="keyvalue"></param>
         /// <returns></returns>
-        public JsonResult Save(string formcode, string data, string keyname, string keyvalue) {
+        public JsonResult Save(string data) {
             Result result;
             try
             {
-                using (FormHelper form = new FormHelper(formcode, keyname, keyvalue))
+                using (FormHelper form = CreateFormHelper())
                 {
                     result = form.SaveData(data) ? Result.Success : Result.Defeat;
                 }

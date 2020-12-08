@@ -76,8 +76,8 @@ namespace ZNoteAPI.Models.Token
         public string GetUserBH() {
             using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
             {
-                string sql = $"select userbh from sys_token where token='{token}'";
-                string userbh = helper.ExecuteScalar(sql).ToString("");
+                string sql = $"select userbh from sys_token where token=@token";
+                string userbh = helper.ExecuteScalar(sql, new DbParam("token", token)).ToString("");
                 return userbh;
             }
         }
