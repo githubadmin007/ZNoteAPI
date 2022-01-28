@@ -41,7 +41,7 @@ namespace ZNoteAPI.Controllers
         public JsonResult Login(string loginname,string password) {
             using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
             {
-                var userInfo = helper.ExecuteReader_ToDict($"SELECT * FROM u_user where login_name='{loginname}'");
+                var userInfo = helper.ExecuteReader_ToDict($"SELECT * FROM u_user where login_name=@loginname", new DbParam("loginname", loginname));
                 if (userInfo == null)
                 {
                     return Json(ResultCode.UserNotExist.GetResult());
@@ -61,6 +61,28 @@ namespace ZNoteAPI.Controllers
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// 检查密码是否正确
+        /// </summary>
+        /// <param name="password"></param>
+        /// <returns></returns>
+        public JsonResult CheckPassword(string password)
+        {
+            Result result;
+            try {
+                using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
+                {
+                    string userbh = TokenHelper.GetUserBH();
+                    bool pass = helper.HasRecord("u_user", "userbh=@userbh and password=@password", new DbParam("userbh", userbh), new DbParam("password", password));
+                    result = Result.CreateSuccess("", pass);
+                }
+            }
+            catch (Exception ex) {
+                result = Result.CreateFromException(ex);
+            }
+            return Json(result);
         }
 
         /// <summary>

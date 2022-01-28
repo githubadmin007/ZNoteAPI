@@ -20,7 +20,7 @@ namespace ZNoteAPI.Controllers
         /// <param name="parentbh"></param>
         /// <param name="state"></param>
         /// <returns></returns>
-        public IActionResult GetList(string type, string parentbh, string state)
+        public IActionResult GetList(string type, string state, string parentbh)
         {
             Result result;
             try
@@ -177,7 +177,38 @@ namespace ZNoteAPI.Controllers
             return Json(result);
         }
 
-
+        /// <summary>
+        /// 获取待办项信息
+        /// </summary>
+        /// <param name="todobh"></param>
+        /// <returns></returns>
+        public IActionResult GetInfo(string todobh)
+        {
+            Result result;
+            try
+            {
+                using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
+                {
+                    string userbh = TokenHelper.GetUserBH();
+                    string sql = $"SELECT * FROM v_todo where userbh=@userbh and todobh=@todobh";
+                    var dict = helper.ExecuteReader_ToDict(sql, new DbParam("userbh", userbh), new DbParam("todobh", todobh));
+                    if (dict != null)
+                    {
+                        result = ResultCode.Success.GetResult(dict);
+                    }
+                    else
+                    {
+                        result = Result.CreateDefeat("查无此待办项");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.log("Todo.GetToDoList", ex);
+                result = Result.CreateDefeat(ex.Message);
+            }
+            return Json(result);
+        }
 
 
 
@@ -311,36 +342,7 @@ namespace ZNoteAPI.Controllers
             return Json(result);
         }
 
-        /// <summary>
-        /// 获取待办项信息
-        /// </summary>
-        /// <param name="todobh"></param>
-        /// <returns></returns>
-        public IActionResult GetInfo(string todobh) {
-            Result result;
-            try
-            {
-                using (DatabaseHelper helper = DatabaseHelper.CreateByConnName("ZNoteDB"))
-                {
-                    string userbh = TokenHelper.GetUserBH();
-                    string sql = $"SELECT * FROM v_todo where userbh='{userbh}' and todobh='{todobh}'";
-                    var dict = helper.ExecuteReader_ToDict(sql);
-                    if (dict != null)
-                    {
-                        result = ResultCode.Success.GetResult(dict);
-                    }
-                    else {
-                        result = Result.CreateDefeat("查无此待办项");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.log("Todo.GetToDoList", ex);
-                result = Result.CreateDefeat(ex.Message);
-            }
-            return Json(result);
-        }
+
 
 
 
